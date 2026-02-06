@@ -10,6 +10,7 @@ interface CategoryGroupProps {
   items: ShoppingItemLocal[];
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit: (item: ShoppingItemLocal) => void;
 }
 
 export function CategoryGroup({
@@ -17,6 +18,7 @@ export function CategoryGroup({
   items,
   onToggle,
   onDelete,
+  onEdit,
 }: CategoryGroupProps) {
   const [open, setOpen] = useState(true);
   const category = getCategoryById(categoryId);
@@ -56,6 +58,7 @@ export function CategoryGroup({
               item={item}
               onToggle={onToggle}
               onDelete={onDelete}
+              onEdit={onEdit}
             />
           ))}
         </div>

@@ -6,9 +6,10 @@ interface ItemRowProps {
   item: ShoppingItemLocal;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit: (item: ShoppingItemLocal) => void;
 }
 
-export function ItemRow({ item, onToggle, onDelete }: ItemRowProps) {
+export function ItemRow({ item, onToggle, onDelete, onEdit }: ItemRowProps) {
   return (
     <div className="flex items-center gap-3 px-4 py-2.5 group hover:bg-[var(--surface-hover)] transition-colors">
       <button
@@ -32,7 +33,10 @@ export function ItemRow({ item, onToggle, onDelete }: ItemRowProps) {
           </svg>
         )}
       </button>
-      <div className="flex-1 min-w-0">
+      <button
+        onClick={() => onEdit(item)}
+        className="flex-1 min-w-0 text-left"
+      >
         <span
           className={`text-sm transition-all ${
             item.completed
@@ -52,10 +56,31 @@ export function ItemRow({ item, onToggle, onDelete }: ItemRowProps) {
             {item.note}
           </p>
         )}
-      </div>
+      </button>
+      <button
+        onClick={() => onEdit(item)}
+        className="flex-shrink-0 p-1 text-[var(--muted)] hover:text-[var(--accent)] transition-colors"
+        aria-label="Modifier"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path
+            d="M11.5 1.5L14.5 4.5L5 14H2V11L11.5 1.5Z"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M9.5 3.5L12.5 6.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
       <button
         onClick={() => onDelete(item.id)}
-        className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-[var(--muted)] hover:text-[var(--danger)]"
+        className="flex-shrink-0 p-1 text-[var(--muted)] hover:text-[var(--danger)] transition-colors"
         aria-label="Supprimer"
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

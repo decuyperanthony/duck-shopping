@@ -9,14 +9,17 @@ import { AddItemDialog } from "@/components/add-item-dialog";
 import { NavBar } from "@/components/nav-bar";
 import { EmptyState } from "@/components/empty-state";
 import { OnlineStatus } from "@/components/online-status";
+import type { ShoppingItemLocal } from "@/lib/types";
 
 export default function Home() {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<ShoppingItemLocal | null>(null);
   const {
     loading,
     addItem,
     toggleItem,
     deleteItem,
+    updateItem,
     totalCount,
     completedCount,
     progress,
@@ -26,6 +29,18 @@ export default function Home() {
   const categoriesWithItems = CATEGORIES.filter(
     (cat) => groupedByCategory[cat.id]?.length > 0
   );
+
+  function handleEdit(item: ShoppingItemLocal) {
+    setEditingItem(item);
+    setDialogOpen(true);
+  }
+
+  function handleDialogClose(open: boolean) {
+    setDialogOpen(open);
+    if (!open) {
+      setEditingItem(null);
+    }
+  }
 
   return (
     <div className="min-h-screen pb-24">
@@ -65,6 +80,7 @@ export default function Home() {
                 items={groupedByCategory[cat.id]}
                 onToggle={toggleItem}
                 onDelete={deleteItem}
+                onEdit={handleEdit}
               />
             ))}
           </div>
@@ -72,13 +88,15 @@ export default function Home() {
       </main>
 
       {/* Bottom Navigation */}
-      <NavBar onAddClick={() => setDialogOpen(true)} />
+      <NavBar onAddClick={() => { setEditingItem(null); setDialogOpen(true); }} />
 
-      {/* Add Item Dialog */}
+      {/* Add/Edit Item Dialog */}
       <AddItemDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={handleDialogClose}
         onAdd={addItem}
+        editItem={editingItem}
+        onUpdate={updateItem}
       />
     </div>
   );

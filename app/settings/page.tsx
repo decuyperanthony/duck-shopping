@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { NavBar } from "@/components/nav-bar";
 import { AddItemDialog } from "@/components/add-item-dialog";
 import { useShoppingList } from "@/lib/use-shopping-list";
 import { exportItemsAsJSON } from "@/lib/sync";
+
+type DbStatus = "checking" | "connected" | "disconnected";
 
 export default function SettingsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -14,6 +16,19 @@ export default function SettingsPage() {
   const [confirmClear, setConfirmClear] = useState<"completed" | "all" | null>(
     null
   );
+  const [dbStatus, setDbStatus] = useState<DbStatus>("checking");
+
+  useEffect(() => {
+    async function checkDb() {
+      try {
+        const res = await fetch("/api/health", { cache: "no-store" });
+        setDbStatus(res.ok ? "connected" : "disconnected");
+      } catch {
+        setDbStatus("disconnected");
+      }
+    }
+    checkDb();
+  }, []);
 
   const handleExport = useCallback(async () => {
     const json = await exportItemsAsJSON();
@@ -51,7 +66,7 @@ export default function SettingsPage() {
       <header className="sticky top-0 z-20 bg-[var(--background)]/95 backdrop-blur-sm border-b border-[var(--border)]">
         <div className="max-w-md mx-auto px-4 py-4">
           <h1 className="text-xl font-bold text-[var(--foreground)]">
-            Réglages
+            R&eacute;glages
           </h1>
         </div>
       </header>
@@ -67,7 +82,7 @@ export default function SettingsPage() {
                 : "text-[var(--muted)] hover:text-[var(--foreground)]"
             }`}
           >
-            Général
+            G&eacute;n&eacute;ral
           </button>
           <button
             onClick={() => setActiveTab("data")}
@@ -77,7 +92,7 @@ export default function SettingsPage() {
                 : "text-[var(--muted)] hover:text-[var(--foreground)]"
             }`}
           >
-            Données
+            Donn&eacute;es
           </button>
         </div>
 
@@ -99,22 +114,52 @@ export default function SettingsPage() {
                   <p className="text-2xl font-bold text-green-400">
                     {completedCount}
                   </p>
-                  <p className="text-xs text-[var(--muted)]">Achetés</p>
+                  <p className="text-xs text-[var(--muted)]">Achet&eacute;s</p>
                 </div>
               </div>
+            </div>
+
+            {/* Database status */}
+            <div className="bg-[var(--card)] rounded-xl p-4 border border-[var(--border)]">
+              <h3 className="text-sm font-medium text-[var(--muted)] mb-3">
+                Base de donn&eacute;es
+              </h3>
+              <div className="flex items-center gap-3">
+                <span
+                  className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                    dbStatus === "checking"
+                      ? "bg-amber-400 animate-pulse"
+                      : dbStatus === "connected"
+                        ? "bg-green-400"
+                        : "bg-red-400"
+                  }`}
+                />
+                <span className="text-sm text-[var(--foreground)]">
+                  {dbStatus === "checking"
+                    ? "V\u00e9rification..."
+                    : dbStatus === "connected"
+                      ? "Connect\u00e9e"
+                      : "D\u00e9connect\u00e9e"}
+                </span>
+              </div>
+              {dbStatus === "disconnected" && (
+                <p className="text-xs text-[var(--muted)] mt-2">
+                  Les donn&eacute;es sont sauvegard&eacute;es localement et seront synchronis&eacute;es au retour de la connexion.
+                </p>
+              )}
             </div>
 
             {/* About */}
             <div className="bg-[var(--card)] rounded-xl p-4 border border-[var(--border)]">
               <h3 className="text-sm font-medium text-[var(--muted)] mb-2">
-                À propos
+                &Agrave; propos
               </h3>
               <p className="text-sm text-[var(--foreground)]">
                 Ma Liste de Courses v1.0
               </p>
               <p className="text-xs text-[var(--muted)] mt-1">
-                PWA offline-first — vos données sont stockées localement et
-                synchronisées quand vous êtes en ligne.
+                PWA offline-first — vos donn&eacute;es sont stock&eacute;es localement et
+                synchronis&eacute;es quand vous &ecirc;tes en ligne.
               </p>
             </div>
           </div>
@@ -128,7 +173,7 @@ export default function SettingsPage() {
                 Exporter
               </h3>
               <p className="text-xs text-[var(--muted)] mb-3">
-                Téléchargez votre liste au format JSON.
+                T&eacute;l&eacute;chargez votre liste au format JSON.
               </p>
               <button
                 onClick={handleExport}
@@ -144,17 +189,21 @@ export default function SettingsPage() {
                 Nettoyer
               </h3>
               <div className="space-y-2">
+                <p className="text-xs text-[var(--muted)] mb-2">
+                  Retire de la liste les articles que vous avez coch&eacute;s.
+                </p>
                 <button
                   onClick={handleClearCompleted}
+                  disabled={completedCount === 0}
                   className={`w-full py-2.5 rounded-lg border text-sm font-medium transition-colors ${
                     confirmClear === "completed"
                       ? "border-amber-500 text-amber-400 bg-amber-500/10"
-                      : "border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--surface)]"
+                      : "border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--surface)] disabled:opacity-40 disabled:cursor-not-allowed"
                   }`}
                 >
                   {confirmClear === "completed"
                     ? "Confirmer la suppression"
-                    : "Supprimer les articles achetés"}
+                    : `Retirer les ${completedCount} article${completedCount > 1 ? "s" : ""} coch\u00e9${completedCount > 1 ? "s" : ""}`}
                 </button>
                 <button
                   onClick={handleClearAll}
