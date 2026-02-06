@@ -10,6 +10,7 @@ import { NavBar } from "@/components/nav-bar";
 import { EmptyState } from "@/components/empty-state";
 import { OnlineStatus } from "@/components/online-status";
 import type { ShoppingItemLocal } from "@/lib/types";
+import { PromptInput } from "@/components/prompt-input";
 
 export default function Home() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -25,6 +26,12 @@ export default function Home() {
     progress,
     groupedByCategory,
   } = useShoppingList();
+
+  const handlePromptItems = async (items: Parameters<typeof addItem>[0][]) => {
+    for (const item of items) {
+      await addItem(item);
+    }
+  };
 
   const categoriesWithItems = CATEGORIES.filter(
     (cat) => groupedByCategory[cat.id]?.length > 0
@@ -62,6 +69,11 @@ export default function Home() {
           </div>
         )}
       </header>
+
+      {/* AI Prompt */}
+      <div className="max-w-md mx-auto">
+        <PromptInput onItemsParsed={handlePromptItems} />
+      </div>
 
       {/* Content */}
       <main className="max-w-md mx-auto">
