@@ -32,23 +32,31 @@ Règles :
 
 type Provider = "anthropic" | "openai";
 
-function detectProvider(): { provider: Provider; apiKey: string } | null {
+interface ProviderConfig {
+  provider: Provider;
+  apiKey: string;
+}
+
+function getAvailableProviders(): ProviderConfig[] {
   const explicit = process.env.AI_PROVIDER as Provider | undefined;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
 
-  if (explicit === "openai" && openaiKey) {
-    return { provider: "openai", apiKey: openaiKey };
-  }
-  if (explicit === "anthropic" && anthropicKey) {
-    return { provider: "anthropic", apiKey: anthropicKey };
+  const providers: ProviderConfig[] = [];
+
+  if (explicit === "openai") {
+    if (openaiKey) providers.push({ provider: "openai", apiKey: openaiKey });
+    if (anthropicKey) providers.push({ provider: "anthropic", apiKey: anthropicKey });
+  } else if (explicit === "anthropic") {
+    if (anthropicKey) providers.push({ provider: "anthropic", apiKey: anthropicKey });
+    if (openaiKey) providers.push({ provider: "openai", apiKey: openaiKey });
+  } else {
+    // Auto-detect: add all available, anthropic first
+    if (anthropicKey) providers.push({ provider: "anthropic", apiKey: anthropicKey });
+    if (openaiKey) providers.push({ provider: "openai", apiKey: openaiKey });
   }
 
-  // Auto-detect: prefer whichever key is available
-  if (anthropicKey) return { provider: "anthropic", apiKey: anthropicKey };
-  if (openaiKey) return { provider: "openai", apiKey: openaiKey };
-
-  return null;
+  return providers;
 }
 
 async function parseWithAnthropic(
@@ -83,24 +91,39 @@ async function parseWithOpenAI(
   return response.choices[0]?.message?.content ?? "";
 }
 
+async function parseWithProvider(
+  config: ProviderConfig,
+  prompt: string
+): Promise<string> {
+  return config.provider === "anthropic"
+    ? parseWithAnthropic(config.apiKey, prompt)
+    : parseWithOpenAI(config.apiKey, prompt);
+}
+
 function isCreditsError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   const creditPatterns = [
     "credit balance is too low",
     "insufficient_quota",
-    "billing",
     "exceeded your current quota",
     "rate_limit_exceeded",
   ];
   return creditPatterns.some((p) => msg.toLowerCase().includes(p.toLowerCase()));
 }
 
-function getUserFriendlyError(err: unknown, provider: Provider): string {
+function getUserFriendlyError(err: unknown, provider: Provider, triedFallback: boolean): string {
   if (isCreditsError(err)) {
-    if (provider === "anthropic") {
-      return "Crédits Anthropic insuffisants. Rechargez vos crédits sur console.anthropic.com, ou configurez une clé OpenAI (OPENAI_API_KEY) comme alternative.";
+    const providerName = provider === "anthropic" ? "Anthropic" : "OpenAI";
+    const base = `Crédits ${providerName} insuffisants.`;
+
+    if (triedFallback) {
+      return `${base} Les deux providers (Anthropic et OpenAI) sont à court de crédits. Rechargez vos crédits sur console.anthropic.com ou platform.openai.com.`;
     }
-    return "Crédits OpenAI insuffisants. Rechargez vos crédits sur platform.openai.com, ou configurez une clé Anthropic (ANTHROPIC_API_KEY) comme alternative.";
+
+    if (provider === "anthropic") {
+      return `${base} Rechargez vos crédits sur console.anthropic.com, ou configurez une clé OpenAI (OPENAI_API_KEY) comme alternative.`;
+    }
+    return `${base} Rechargez vos crédits sur platform.openai.com, ou configurez une clé Anthropic (ANTHROPIC_API_KEY) comme alternative.`;
   }
 
   const msg = err instanceof Error ? err.message : String(err);
@@ -117,8 +140,8 @@ function getUserFriendlyError(err: unknown, provider: Provider): string {
 }
 
 export async function POST(request: Request) {
-  const config = detectProvider();
-  if (!config) {
+  const providers = getAvailableProviders();
+  if (providers.length === 0) {
     return NextResponse.json(
       {
         error:
@@ -135,32 +158,47 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Prompt manquant" }, { status: 400 });
   }
 
-  try {
-    const text =
-      config.provider === "anthropic"
-        ? await parseWithAnthropic(config.apiKey, prompt)
-        : await parseWithOpenAI(config.apiKey, prompt);
+  let lastError: unknown;
+  let lastProvider: ProviderConfig = providers[0];
+  let triedFallback = false;
 
-    const items = JSON.parse(text);
+  for (let i = 0; i < providers.length; i++) {
+    const config = providers[i];
+    lastProvider = config;
+    triedFallback = i > 0;
 
-    if (!Array.isArray(items)) {
-      return NextResponse.json(
-        { error: "Réponse invalide du service IA" },
-        { status: 500 }
-      );
+    try {
+      const text = await parseWithProvider(config, prompt);
+      const items = JSON.parse(text);
+
+      if (!Array.isArray(items)) {
+        return NextResponse.json(
+          { error: "Réponse invalide du service IA" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ items });
+    } catch (err) {
+      lastError = err;
+
+      // Only fallback to next provider on credit/billing errors
+      if (isCreditsError(err) && i < providers.length - 1) {
+        continue;
+      }
+
+      break;
     }
-
-    return NextResponse.json({ items });
-  } catch (err) {
-    const userMessage = getUserFriendlyError(err, config.provider);
-    const status = isCreditsError(err) ? 402 : 500;
-
-    return NextResponse.json(
-      {
-        error: userMessage,
-        errorCode: isCreditsError(err) ? "INSUFFICIENT_CREDITS" : "API_ERROR",
-      },
-      { status }
-    );
   }
+
+  const userMessage = getUserFriendlyError(lastError, lastProvider.provider, triedFallback);
+  const status = isCreditsError(lastError) ? 402 : 500;
+
+  return NextResponse.json(
+    {
+      error: userMessage,
+      errorCode: isCreditsError(lastError) ? "INSUFFICIENT_CREDITS" : "API_ERROR",
+    },
+    { status }
+  );
 }
