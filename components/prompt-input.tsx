@@ -11,6 +11,7 @@ export function PromptInput({ onItemsParsed }: PromptInputProps) {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [errorCode, setErrorCode] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -19,6 +20,7 @@ export function PromptInput({ onItemsParsed }: PromptInputProps) {
 
     setLoading(true);
     setError("");
+    setErrorCode("");
 
     try {
       const res = await fetch("/api/items/parse", {
@@ -31,6 +33,7 @@ export function PromptInput({ onItemsParsed }: PromptInputProps) {
 
       if (!res.ok) {
         setError(data.error || "Erreur lors de l'analyse");
+        setErrorCode(data.errorCode || "");
         return;
       }
 
@@ -82,7 +85,15 @@ export function PromptInput({ onItemsParsed }: PromptInputProps) {
         </button>
       </div>
       {error && (
-        <p className="mt-2 text-xs text-red-400">{error}</p>
+        <div className={`mt-2 rounded-lg px-3 py-2 text-xs ${
+          errorCode === "INSUFFICIENT_CREDITS"
+            ? "bg-amber-500/10 border border-amber-500/30 text-amber-400"
+            : errorCode === "NO_API_KEY"
+              ? "bg-blue-500/10 border border-blue-500/30 text-blue-400"
+              : "bg-red-500/10 border border-red-500/30 text-red-400"
+        }`}>
+          {error}
+        </div>
       )}
     </form>
   );
