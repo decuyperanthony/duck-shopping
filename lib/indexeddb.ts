@@ -1,24 +1,28 @@
 import { openDB, type IDBPDatabase } from "idb";
 import { v4 as uuidv4 } from "uuid";
-import type { ShoppingItemLocal, NewItemInput, ServerItem } from "./types";
+import type { ShoppingItemLocal, NewItemInput, ServerItem, ListTemplate, TemplateItem } from "./types";
 import { getCategoryById } from "./categories";
 
 const DB_NAME = "duck-shopping";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "shopping_items";
+const TEMPLATES_STORE = "templates";
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
 function getDB() {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
           const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
           store.createIndex("category", "category");
           store.createIndex("completed", "completed");
           store.createIndex("synced", "synced");
           store.createIndex("deleted", "deleted");
+        }
+        if (oldVersion < 2) {
+          db.createObjectStore(TEMPLATES_STORE, { keyPath: "id" });
         }
       },
     });
@@ -128,6 +132,43 @@ export async function markSynced(id: string, serverId?: number): Promise<void> {
   if (serverId) item.serverId = serverId;
   await db.put(STORE_NAME, item);
 }
+
+// ─── Templates ───────────────────────────────────────────────
+
+export async function getAllTemplates(): Promise<ListTemplate[]> {
+  const db = await getDB();
+  return (await db.getAll(TEMPLATES_STORE)) as ListTemplate[];
+}
+
+export async function saveTemplate(name: string, items: TemplateItem[]): Promise<ListTemplate> {
+  const db = await getDB();
+  const now = new Date().toISOString();
+  const template: ListTemplate = {
+    id: uuidv4(),
+    name,
+    items,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await db.put(TEMPLATES_STORE, template);
+  return template;
+}
+
+export async function deleteTemplate(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete(TEMPLATES_STORE, id);
+}
+
+export async function updateTemplateName(id: string, name: string): Promise<void> {
+  const db = await getDB();
+  const template = (await db.get(TEMPLATES_STORE, id)) as ListTemplate | undefined;
+  if (!template) return;
+  template.name = name;
+  template.updatedAt = new Date().toISOString();
+  await db.put(TEMPLATES_STORE, template);
+}
+
+// ─── Server sync ─────────────────────────────────────────────
 
 export async function upsertFromServer(serverItems: ServerItem[]): Promise<void> {
   const db = await getDB();

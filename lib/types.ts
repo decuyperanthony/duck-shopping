@@ -21,6 +21,21 @@ export type NewItemInput = {
   note: string;
 };
 
+export interface TemplateItem {
+  title: string;
+  category: CategoryId;
+  quantity: number;
+  note: string;
+}
+
+export interface ListTemplate {
+  id: string;
+  name: string;
+  items: TemplateItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type ServerItem = {
   id: number;
   title: string;
