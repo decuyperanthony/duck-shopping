@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { NewItemInput } from "@/lib/types";
+
+type ParseMode = "local" | "ai";
+
+const STORAGE_KEY = "duck-parse-mode";
 
 interface PromptInputProps {
   onItemsParsed: (items: NewItemInput[]) => void;
@@ -12,7 +16,22 @@ export function PromptInput({ onItemsParsed }: PromptInputProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [errorCode, setErrorCode] = useState("");
+  const [mode, setMode] = useState<ParseMode>("local");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Persister le choix du mode
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY) as ParseMode | null;
+    if (saved === "local" || saved === "ai") setMode(saved);
+  }, []);
+
+  function toggleMode() {
+    const next: ParseMode = mode === "local" ? "ai" : "local";
+    setMode(next);
+    localStorage.setItem(STORAGE_KEY, next);
+    setError("");
+    setErrorCode("");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,8 +41,11 @@ export function PromptInput({ onItemsParsed }: PromptInputProps) {
     setError("");
     setErrorCode("");
 
+    const endpoint =
+      mode === "local" ? "/api/items/parse-local" : "/api/items/parse";
+
     try {
-      const res = await fetch("/api/items/parse", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: prompt.trim() }),
@@ -48,6 +70,36 @@ export function PromptInput({ onItemsParsed }: PromptInputProps) {
 
   return (
     <form onSubmit={handleSubmit} className="px-4 py-3">
+      <div className="flex items-center justify-end mb-1.5">
+        <button
+          type="button"
+          onClick={toggleMode}
+          className="flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full transition-colors border"
+          style={{
+            borderColor: mode === "ai" ? "var(--accent)" : "var(--border)",
+            color: mode === "ai" ? "var(--accent)" : "var(--muted)",
+            background: mode === "ai" ? "color-mix(in srgb, var(--accent) 10%, transparent)" : "transparent",
+          }}
+        >
+          {mode === "ai" ? (
+            <>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a4 4 0 0 1 4 4v1a2 2 0 0 1 2 2v1a2 2 0 0 0 2 2 2 2 0 0 1 0 4 2 2 0 0 0-2 2v1a2 2 0 0 1-2 2v1a4 4 0 0 1-8 0v-1a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2 2 2 0 0 1 0-4 2 2 0 0 0 2-2V9a2 2 0 0 1 2-2V6a4 4 0 0 1 4-4z"/>
+              </svg>
+              Mode IA
+            </>
+          ) : (
+            <>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+              Mode local
+            </>
+          )}
+        </button>
+      </div>
       <div className="relative flex items-end gap-2">
         <textarea
           ref={inputRef}
@@ -63,7 +115,11 @@ export function PromptInput({ onItemsParsed }: PromptInputProps) {
               handleSubmit(e);
             }
           }}
-          placeholder="il me faut du pain, du lait et café"
+          placeholder={
+            mode === "local"
+              ? "pain, 3 baguettes, lait bio, PQ"
+              : "il me faut du pain, du lait et café"
+          }
           rows={1}
           disabled={loading}
           className="flex-1 px-3 py-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--accent)] transition-colors resize-none text-sm leading-relaxed disabled:opacity-50"
