@@ -20,3 +20,14 @@ export type NewItemInput = {
   quantity: number;
   note: string;
 };
+
+export type ServerItem = {
+  id: number;
+  title: string;
+  category: string;
+  completed: boolean;
+  quantity: number;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+};

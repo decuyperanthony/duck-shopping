@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { ShoppingItemLocal, NewItemInput } from "./types";
 import * as db from "./indexeddb";
-import { startAutoSync } from "./sync";
+import { startAutoSync, pullFromServer } from "./sync";
 import type { CategoryId } from "./categories";
 
 export function useShoppingList() {
@@ -16,7 +16,14 @@ export function useShoppingList() {
   }, []);
 
   useEffect(() => {
-    refresh().then(() => setLoading(false));
+    const init = async () => {
+      await refresh();
+      setLoading(false);
+      // Pull server data then refresh to merge remote items
+      await pullFromServer();
+      await refresh();
+    };
+    init();
     const stopSync = startAutoSync();
     return () => stopSync();
   }, [refresh]);

@@ -1,6 +1,7 @@
 import { openDB, type IDBPDatabase } from "idb";
 import { v4 as uuidv4 } from "uuid";
-import type { ShoppingItemLocal, NewItemInput } from "./types";
+import type { ShoppingItemLocal, NewItemInput, ServerItem } from "./types";
+import { getCategoryById } from "./categories";
 
 const DB_NAME = "duck-shopping";
 const DB_VERSION = 1;
@@ -126,4 +127,64 @@ export async function markSynced(id: string, serverId?: number): Promise<void> {
   item.synced = true;
   if (serverId) item.serverId = serverId;
   await db.put(STORE_NAME, item);
+}
+
+export async function upsertFromServer(serverItems: ServerItem[]): Promise<void> {
+  const db = await getDB();
+  const localItems = (await db.getAll(STORE_NAME)) as ShoppingItemLocal[];
+
+  const serverIdSet = new Set(serverItems.map((si) => si.id));
+  const localByServerId = new Map<number, ShoppingItemLocal>();
+
+  for (const local of localItems) {
+    if (local.serverId !== undefined) {
+      localByServerId.set(local.serverId, local);
+    }
+  }
+
+  const tx = db.transaction(STORE_NAME, "readwrite");
+
+  for (const serverItem of serverItems) {
+    const local = localByServerId.get(serverItem.id);
+
+    if (!local) {
+      // Not found locally → insert as new synced item
+      const newItem: ShoppingItemLocal = {
+        id: uuidv4(),
+        serverId: serverItem.id,
+        title: serverItem.title,
+        category: getCategoryById(serverItem.category).id,
+        completed: serverItem.completed,
+        quantity: serverItem.quantity,
+        note: serverItem.note ?? "",
+        createdAt: serverItem.createdAt,
+        updatedAt: serverItem.updatedAt,
+        synced: true,
+        deleted: false,
+      };
+      await tx.store.put(newItem);
+    } else if (local.synced) {
+      // Found locally and synced → update with server data
+      const updated: ShoppingItemLocal = {
+        ...local,
+        title: serverItem.title,
+        category: getCategoryById(serverItem.category).id,
+        completed: serverItem.completed,
+        quantity: serverItem.quantity,
+        note: serverItem.note ?? "",
+        updatedAt: serverItem.updatedAt,
+      };
+      await tx.store.put(updated);
+    }
+    // If found locally and NOT synced → skip (preserve pending local changes)
+  }
+
+  // Handle server-side deletions: local items with serverId not on server → remove
+  for (const local of localItems) {
+    if (local.serverId !== undefined && !serverIdSet.has(local.serverId) && !local.deleted) {
+      await tx.store.delete(local.id);
+    }
+  }
+
+  await tx.done;
 }
