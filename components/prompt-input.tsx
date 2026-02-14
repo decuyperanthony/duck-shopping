@@ -63,7 +63,7 @@ export function PromptInput({ onItemsParsed }: PromptInputProps) {
               handleSubmit(e);
             }
           }}
-          placeholder="Ex: il me faut du pain, 3 bières et du café bio..."
+          placeholder="il me faut du pain, du lait et café"
           rows={1}
           disabled={loading}
           className="flex-1 px-3 py-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--accent)] transition-colors resize-none text-sm leading-relaxed disabled:opacity-50"

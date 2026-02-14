@@ -25,6 +25,10 @@ export function CategoryGroup({
   const completedCount = items.filter((i) => i.completed).length;
   const allCompleted = completedCount === items.length;
 
+  const sortedItems = [...items].sort(
+    (a, b) => Number(a.completed) - Number(b.completed)
+  );
+
   return (
     <div className="mb-2">
       <button
@@ -52,7 +56,7 @@ export function CategoryGroup({
       </button>
       {open && (
         <div className="border-l-2 border-[var(--border)] ml-6">
-          {items.map((item) => (
+          {sortedItems.map((item) => (
             <ItemRow
               key={item.id}
               item={item}
