@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import type { ShoppingItemLocal } from "@/lib/types";
 
 interface ItemRowProps {
@@ -10,11 +11,36 @@ interface ItemRowProps {
 }
 
 export function ItemRow({ item, onToggle, onDelete, onEdit }: ItemRowProps) {
+  const [animating, setAnimating] = useState(false);
+  const prevCompleted = useRef(item.completed);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (prevCompleted.current !== item.completed) {
+      setAnimating(true);
+      const timer = setTimeout(() => setAnimating(false), 500);
+      prevCompleted.current = item.completed;
+      return () => clearTimeout(timer);
+    }
+  }, [item.completed]);
+
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 group hover:bg-[var(--surface-hover)] transition-colors">
+    <div
+      className={`flex items-center gap-3 px-4 py-2.5 group hover:bg-[var(--surface-hover)] transition-colors ${
+        animating
+          ? item.completed
+            ? "animate-item-check"
+            : "animate-item-uncheck"
+          : ""
+      }`}
+    >
       <button
         onClick={() => onToggle(item.id)}
-        className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+        className={`flex-shrink-0 w-7 h-7 rounded-md border-2 flex items-center justify-center transition-all ${
           item.completed
             ? "bg-[var(--accent)] border-[var(--accent)]"
             : "border-[var(--border)] hover:border-[var(--accent)]"
@@ -22,11 +48,11 @@ export function ItemRow({ item, onToggle, onDelete, onEdit }: ItemRowProps) {
         aria-label={item.completed ? "Marquer non acheté" : "Marquer acheté"}
       >
         {item.completed && (
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path
-              d="M2 6L5 9L10 3"
+              d="M3 8L6.5 11.5L13 4"
               stroke="white"
-              strokeWidth="2"
+              strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -34,7 +60,7 @@ export function ItemRow({ item, onToggle, onDelete, onEdit }: ItemRowProps) {
         )}
       </button>
       <button
-        onClick={() => onEdit(item)}
+        onClick={() => onToggle(item.id)}
         className="flex-1 min-w-0 text-left"
       >
         <span
