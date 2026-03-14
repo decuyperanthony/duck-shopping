@@ -63,6 +63,11 @@ export function useShoppingList() {
     [refresh]
   );
 
+  const uncheckAll = useCallback(async () => {
+    await db.uncheckAll();
+    await refresh();
+  }, [refresh]);
+
   const clearCompleted = useCallback(async () => {
     await db.clearCompleted();
     await refresh();
@@ -94,6 +99,7 @@ export function useShoppingList() {
     toggleItem,
     deleteItem,
     updateItem,
+    uncheckAll,
     clearCompleted,
     clearAll,
     totalCount,

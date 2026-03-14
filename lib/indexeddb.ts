@@ -113,6 +113,22 @@ export async function clearCompleted(): Promise<void> {
   await tx.done;
 }
 
+export async function uncheckAll(): Promise<void> {
+  const db = await getDB();
+  const items = (await db.getAll(STORE_NAME)) as ShoppingItemLocal[];
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  const now = new Date().toISOString();
+  for (const item of items) {
+    if (item.completed && !item.deleted) {
+      item.completed = false;
+      item.updatedAt = now;
+      item.synced = false;
+      await tx.store.put(item);
+    }
+  }
+  await tx.done;
+}
+
 export async function clearAll(): Promise<void> {
   const db = await getDB();
   await db.clear(STORE_NAME);

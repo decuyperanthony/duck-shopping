@@ -25,6 +25,7 @@ export default function Home() {
     toggleItem,
     deleteItem,
     updateItem,
+    uncheckAll,
     totalCount,
     completedCount,
     progress,
@@ -89,6 +90,7 @@ export default function Home() {
               completed={completedCount}
               total={totalCount}
               progress={progress}
+              onUncheckAll={uncheckAll}
             />
           </div>
         )}
