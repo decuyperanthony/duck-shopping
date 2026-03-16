@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   title: "Ma Liste de Courses",
   description: "Liste de courses collaborative - PWA offline-first",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/icons/icon-192.svg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
