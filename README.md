@@ -2,19 +2,25 @@
 
 A smart, offline-first shopping list app powered by AI. Type your grocery needs in natural language and let Claude or ChatGPT automatically parse, categorize, and organize your items.
 
-Built with **Next.js 16**, **TypeScript**, **Tailwind CSS**, and an **offline-first architecture** using IndexedDB with optional PostgreSQL sync.
+Built with **Next.js 16**, **TypeScript**, **Tailwind CSS 4**, and an **offline-first architecture** using IndexedDB with optional PostgreSQL sync.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38bdf8?logo=tailwindcss)
 ![React](https://img.shields.io/badge/React-19-61dafb?logo=react)
 
+<p align="center">
+  <img src="docs/screenshots/shopping-list.jpg" alt="Shopping list with categories and progress tracking" width="280" />
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/screenshots/add-item.jpg" alt="Add item modal with category picker" width="280" />
+</p>
+
 ---
 
 ## Features
 
 **AI-Powered Natural Language Parsing**
-- Write freely: *"3 baguettes, 500g de boeuf haché bio, 2 bouteilles de lait d'amande"*
+- Write freely: *"3 baguettes, 500g de boeuf hache bio, 2 bouteilles de lait d'amande"*
 - Items are automatically parsed with title, quantity, category, and notes
 - Dual AI provider support: **Claude** (Anthropic) or **ChatGPT** (OpenAI) with automatic fallback
 - Local rule-based parser available for fully offline usage (no API key needed)
@@ -26,7 +32,8 @@ Built with **Next.js 16**, **TypeScript**, **Tailwind CSS**, and an **offline-fi
 **Offline-First Architecture**
 - Full functionality without internet using IndexedDB
 - Optional bidirectional sync with PostgreSQL (Neon serverless)
-- Service Worker for PWA support
+- Optimistic UI updates with background sync (30s interval + instant on reconnect)
+- Hybrid ID strategy: client-side UUID + server-assigned serial
 
 **Templates**
 - Save frequently used shopping lists as reusable templates
@@ -34,7 +41,35 @@ Built with **Next.js 16**, **TypeScript**, **Tailwind CSS**, and an **offline-fi
 
 **Progress Tracking**
 - Visual progress bar as you check off items
-- Items grouped by category for easy navigation
+- Items grouped by category with per-section progress counters
+
+**PWA**
+- Installable on iOS and Android
+- Service worker with network-first navigation and cache-first static assets
+
+---
+
+## Architecture
+
+```
+User action
+  --> IndexedDB (instant, optimistic UI)
+  --> React state update
+  --> Background sync to PostgreSQL (Neon)
+
+Offline?
+  --> Queued locally, synced on reconnect
+  --> Soft deletion preserves server integrity
+```
+
+| Concern | Approach |
+|---------|----------|
+| State management | Custom React hook (`useShoppingList`) |
+| Local persistence | IndexedDB with hybrid local/remote IDs |
+| Cloud sync | Batch sync endpoint, 30s auto-interval, `online` event listener |
+| AI parsing | Provider-agnostic system prompt + local rule-based fallback |
+| Modals | Radix UI Dialog (accessible, keyboard-friendly) |
+| Caching | Service worker: network-first for pages, cache-first for assets, bypass for API |
 
 ---
 
