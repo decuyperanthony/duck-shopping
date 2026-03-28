@@ -26,7 +26,9 @@ export function CategoryGroup({
   const allCompleted = completedCount === items.length;
 
   const sortedItems = [...items].sort(
-    (a, b) => Number(a.completed) - Number(b.completed)
+    (a, b) =>
+      Number(a.completed) - Number(b.completed) ||
+      a.title.localeCompare(b.title, "fr")
   );
 
   return (
