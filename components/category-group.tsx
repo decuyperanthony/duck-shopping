@@ -1,9 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ShoppingItemLocal } from "@/lib/types";
 import { getCategoryById } from "@/lib/categories";
 import { ItemRow } from "./item-row";
+
+const STORAGE_KEY = "duck-collapsed-categories";
+
+function getCollapsedIds(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistCollapsed(id: string, collapsed: boolean) {
+  try {
+    const set = new Set(getCollapsedIds());
+    if (collapsed) set.add(id);
+    else set.delete(id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
+  } catch {}
+}
 
 interface CategoryGroupProps {
   categoryId: string;
@@ -25,6 +46,18 @@ export function CategoryGroup({
   const completedCount = items.filter((i) => i.completed).length;
   const allCompleted = completedCount === items.length;
 
+  useEffect(() => {
+    if (getCollapsedIds().includes(categoryId)) setOpen(false);
+  }, [categoryId]);
+
+  function toggleOpen() {
+    setOpen((prev) => {
+      const next = !prev;
+      persistCollapsed(categoryId, !next);
+      return next;
+    });
+  }
+
   const sortedItems = [...items].sort(
     (a, b) =>
       Number(a.completed) - Number(b.completed) ||
@@ -34,7 +67,7 @@ export function CategoryGroup({
   return (
     <div className="mb-2">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={toggleOpen}
         className="w-full flex items-center gap-2 px-4 py-2 hover:bg-[var(--surface-hover)] transition-colors"
       >
         <span
