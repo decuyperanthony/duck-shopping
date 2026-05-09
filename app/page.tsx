@@ -58,7 +58,7 @@ export default function Home() {
 
   const filteredGrouped = useMemo(() => {
     if (!searchQuery) return groupedByCategory;
-    const result: typeof groupedByCategory = {};
+    const result = {} as typeof groupedByCategory;
     for (const cat of CATEGORIES) {
       const list = groupedByCategory[cat.id];
       if (!list) continue;
