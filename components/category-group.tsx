@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ShoppingItemLocal } from "@/lib/types";
 import { getCategoryById } from "@/lib/categories";
 import { ItemRow } from "./item-row";
@@ -46,9 +46,32 @@ export function CategoryGroup({
   const completedCount = items.filter((i) => i.completed).length;
   const allCompleted = completedCount === items.length;
 
+  const prevAllCompletedRef = useRef<boolean | null>(null);
+  const prevItemCountRef = useRef<number>(items.length);
+
   useEffect(() => {
     if (getCollapsedIds().includes(categoryId)) setOpen(false);
   }, [categoryId]);
+
+  useEffect(() => {
+    if (
+      items.length > 0 &&
+      allCompleted &&
+      prevAllCompletedRef.current === false
+    ) {
+      setOpen(false);
+      persistCollapsed(categoryId, true);
+    }
+    prevAllCompletedRef.current = allCompleted;
+  }, [allCompleted, items.length, categoryId]);
+
+  useEffect(() => {
+    if (items.length > prevItemCountRef.current) {
+      setOpen(true);
+      persistCollapsed(categoryId, false);
+    }
+    prevItemCountRef.current = items.length;
+  }, [items.length, categoryId]);
 
   function toggleOpen() {
     setOpen((prev) => {
